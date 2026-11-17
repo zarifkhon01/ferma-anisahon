@@ -62,6 +62,8 @@ button.ghost{background:var(--panel)}
 .bar.mood i{background:var(--heart)}
 .card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 #hint{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));background:rgba(255,244,214,.94);border:2px solid var(--wood);border-radius:16px;padding:6px 14px;font-size:13px;line-height:1.4;text-align:center;max-width:calc(100vw - 32px);width:max-content;pointer-events:none}
+#hint .hShort{display:none}
+@media (max-width:640px){#hint .hLong{display:none}#hint .hShort{display:inline}}
 #toast{position:fixed;z-index:8;left:50%;top:calc(var(--hudH,64px) + 14px);transform:translateX(-50%);background:var(--wood-dark);color:#fff4d6;border-radius:12px;padding:8px 16px;font-weight:500;font-size:14px;max-width:calc(100vw - 32px);width:max-content;text-align:center;pointer-events:none;opacity:0;transition:opacity .25s}
 #toast.show{opacity:1}
 @media (max-width:560px){
@@ -114,7 +116,7 @@ button.ghost{background:var(--panel)}
   </div>
 </aside>
 
-<div id="hint">Трава: бросить зерно · Цыплёнок: погладить · Кухня: Зарифхон сварит кашу · Карусель, качели, горка: покатать цыплят · Девочка с крыльями: полёт над фермой<span id="hintDrag"><br>Двигай поле, чтобы осмотреть всю ферму</span></div>
+<div id="hint"><span class="hLong">Трава: бросить зерно · Цыплёнок: погладить · Кухня: Зарифхон сварит кашу · Карусель, качели, горка: покатать цыплят · Девочка с крыльями: полёт над фермой<span id="hintDrag"><br>Двигай поле, чтобы осмотреть всю ферму</span></span><span class="hShort">Нажимай на всё на ферме · Двигай поле пальцем</span></div>
 <div id="toast" role="status"></div>
 
 <script>
@@ -906,7 +908,10 @@ function renderCard(){
   $('cHunger').style.width=Math.round(sel.hunger)+'%';$('cMood').style.width=Math.round(sel.mood)+'%';
   $('cHat').textContent=sel.hat?'Шапочка уже есть':'Шапочка · 20 🪙';
 }
-function select(c){sel=c;$('card').hidden=!c;$('hint').hidden=!!c;if(c)renderCard();renderHud()}
+const HINTKEY='ferma-anisahon-hint';
+let hintGone=false;try{hintGone=localStorage.getItem(HINTKEY)==='1'&&innerWidth<=640}catch(e){}
+function dismissHint(){if(hintGone||innerWidth>640)return;hintGone=true;$('hint').hidden=true;try{localStorage.setItem(HINTKEY,'1')}catch(e){}}
+function select(c){sel=c;$('card').hidden=!c;$('hint').hidden=!!c||hintGone;if(c)renderCard();renderHud()}
 let toastTimer=0;
 function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400)}
 
@@ -949,7 +954,7 @@ cv.addEventListener('pointermove',ev=>{
   if(!down.moved&&Math.abs(dx)+Math.abs(dy)>9&&needsPan()){down.moved=true;cv.classList.add('drag')}
   if(down.moved){camX=down.cx-dx/Z;camY=down.cy-dy/Z;clampCam()}
 });
-const endPtr=ev=>{if(!down||ev.pointerId!==down.id)return;const d=down;down=null;cv.classList.remove('drag');
+const endPtr=ev=>{if(!down||ev.pointerId!==down.id)return;const d=down;down=null;cv.classList.remove('drag');dismissHint();
   if(!d.moved&&ev.type==='pointerup'){const p=toWorld(ev.clientX,ev.clientY);clickWorld(p.x,p.y)}};
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
 cv.addEventListener('wheel',ev=>{if(!needsPan())return;ev.preventDefault();camX+=(ev.shiftKey?ev.deltaY:ev.deltaX)/Z;if(!ev.shiftKey)camY+=ev.deltaY/Z;clampCam()},{passive:false});
@@ -999,6 +1004,7 @@ function resize(){
   layout();
   if(first){first=false;camX=(WW-W/Z)/2;camY=(WH-(H-hudH)/Z)/2;clampCam()}
   $('hintDrag').hidden=!needsPan();
+  $('hint').hidden=!!sel||hintGone;
   buildBg();
 }
 
